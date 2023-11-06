@@ -10,8 +10,36 @@ from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 from pydantic import BaseModel, EmailStr
 from starlette.responses import JSONResponse
 
+# dotenv
+
+from dotenv import dotenv_values
+
+#credentials
+credentials = dotenv_values(".env")
+
+#Adding CORS headers
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+#Adding cors urls
+#origins allowed to access the server
+
+origins=[
+    'http://localhost: 3000'
+]
+
+#Add middleware
+#What to allow 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins = origins,
+    allow_credentials = True,
+    allow_methods = ["*"],
+    allow_headers = ["*"]
+)
+
+
 
 @app.get('/')
 def index():
@@ -100,39 +128,48 @@ async def delete_product(id: int):
 class EmailSchema(BaseModel):
     email: List[EmailStr]
 
+class EmailContent(BaseModel):
+    message: str
+    subject: str
+
 
 conf = ConnectionConfig(
-    MAIL_USERNAME ="username",
-    MAIL_PASSWORD = "**********",
-    MAIL_FROM = "test@email.com",
+    MAIL_USERNAME =credentials["EMAIL"],
+    MAIL_PASSWORD = credentials["PASS"],
+    MAIL_FROM = credentials["EMAIL"],
     MAIL_PORT = 465,
-    MAIL_SERVER = "mail server",
+    MAIL_SERVER = "smtp.gmail.com",
     MAIL_STARTTLS = False,
     MAIL_SSL_TLS = True,
     USE_CREDENTIALS = True,
     VALIDATE_CERTS = True
 )
 
-app = FastAPI()
+@app.post('/email/{product_id}')
+async def send_email(product_id: int, content: EmailContent):
+    product = await Product.get(id = product_id)
+    supplier = await product.supplied_by
+    supplier_email = [supplier.email]
 
+    html = """
+    <h4>Kagiso Business</h4>
+    <br> 
+    <p>{content.message}</p>
+    <br>
+    <h6>Best Regards</h6>
+    <h6>Kagiso business</h6>
 
-html = """
-<p>Thanks for using Fastapi-mail</p> 
-"""
-
-
-@app.post("/email")
-async def simple_send(email: EmailSchema) -> JSONResponse:
+    """
 
     message = MessageSchema(
-        subject="Fastapi-Mail module",
-        recipients=email.dict().get("email"),
+        subject=content.subject,
+        recipients=supplier_email,
         body=html,
         subtype=MessageType.html)
 
     fm = FastMail(conf)
     await fm.send_message(message)
-    return JSONResponse(status_code=200, content={"message": "email has been sent"})  
+    return {'status': "ok"}
 
 
 register_tortoise(
