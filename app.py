@@ -87,14 +87,16 @@ async def delete_supplier(supplier_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/products/{supplier_id}")
+@app.post('/product/{supplier_id}')
 async def add_product(supplier_id: int, products_details: product_pydanticIn):
     supplier = await Supplier.get(id = supplier_id)
-    products_details = products_details.dict(exclude_unset =True)
-    products_details["revenue"] += products_details["quantity_sold"] * products_details["unit_price"]
-    product_obj =await Product.create(**products_details, supplied_by = supplier)
-    response =await product_pydantic.from_tortoise_orm(product_obj)
+    products_details = products_details.dict(exclude_unset = True)
+    products_details['revenue'] += products_details['quantity_sold'] * products_details['unit_price']
+    product_obj  = await Product.create(**products_details, supplied_by = supplier)
+    response = await product_pydantic.from_tortoise_orm(product_obj)
     return {"status": "ok", "data": response}
+
+
 
 
 @app.get("/products")
